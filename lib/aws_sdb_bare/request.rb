@@ -8,6 +8,16 @@ module AwsSdb
 
       attr_accessor :account, :secret, :params
 
+      @@use_sha256 = true
+
+      def self.use_sha256=(b)
+        @@use_sha256 = b
+      end
+
+      def self.use_sha256
+        @@use_sha256
+      end
+
       def initialize(method, params, opts={})
         @account = opts[:account] || ENV['AMAZON_ACCESS_KEY_ID']
         @secret = opts[:secret] || ENV['AMAZON_SECRET_ACCESS_KEY']
@@ -50,7 +60,7 @@ module AwsSdb
       def add_req_data_to_params
         @params.update({'Version' => '2007-11-07',
                         'SignatureVersion' => '2',
-                        'SignatureMethod' => 'HmacSHA256',
+                        'SignatureMethod' => @@use_sha256 ? 'HmacSHA256' : 'HmacSHA1',
                         'AWSAccessKeyId' => @account,
                         'Timestamp' => Time.now.gmtime.iso8601})
       end
@@ -67,7 +77,7 @@ module AwsSdb
 
       def signature
         @signature ||= begin
-          digest = OpenSSL::Digest::Digest.new('sha256')
+          digest = OpenSSL::Digest::Digest.new(@@use_sha256 ? 'sha256' : 'sha1')
           hmac = OpenSSL::HMAC.digest(digest, @secret, data_to_sign)
           escape(Base64.encode64(hmac).strip)
         end
